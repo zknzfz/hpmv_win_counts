@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>試合結果の可視化</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        .chart-container { width: 30%; display: inline-block; }
+        .bar-chart-container { width: 60%; margin: auto;}
+        table { width: 60%; margin: 20px auto; border-collapse: collapse; }
+        th, td { border: 1px solid #ccc; padding: 10px; }
+        th { background-color: #f4f4f4; }
+    </style>
+</head>
+<body>
+    <p>データ更新：2025/2/25</p>
+
+    <h2>1st Stage</h2>
+    <p>各バトルの勝利数と割合を示す円グラフです。</p>
+    <div class="chart-container"><canvas id="chart1"></canvas></div>
+    <div class="chart-container"><canvas id="chart2"></canvas></div>
+    <div class="chart-container"><canvas id="chart3"></canvas></div>
+
+    <table id="table-r1">
+        <tr><th>チーム</th><th>勝利数</th></tr>
+    </table>    
+
+    <h2>2nd Stage</h2>
+    <h3> 勝利数 </h3>
+    <div class="bar-chart-container"><canvas id="stacked-bar-chart-r2"></canvas></div>
+    <table id="table-r2">
+        <tr><th>チーム</th><th>勝利数</th></tr>
+    </table>    
+
+    <h3>チーム別勝率グラフ</h3>
+    <p>2nd Stageに勝ち上がった回数のうち、何回FinaleStageに進出できたかの割合です。</p>
+    <div class="bar-chart-container"><canvas id="r2-win-rate-chart"></canvas></div>
+
+    
+    <h3>2nd Stageの組み合わせ割合</h3>
+    <p>2nd Stageの組み合わせの割合を示します。</p>
+    <div class="bar-chart-container"><canvas id="r2-combination-chart"></canvas></div>
+
+
+    <h2>Final Stage</h2>
+    <h3>勝利数</h3>
+    <div class="bar-chart-container"><canvas id="stacked-bar-chart-r3"></canvas></div>
+    <table id="table-r3">
+        <tr><th>チーム</th><th>勝利数</th></tr>
+    </table>    
+
+    <h3>チーム別勝率グラフ</h3>
+    <p>Final Stageに勝ち上がった回数のうち、何回優勝できたかの割合です。<br>
+    チュウオウディビジョンは各ディビジョンの敗北の和集合になるため、グラフになっていません。</p>
+    <div class="bar-chart-container"><canvas id="r3-win-rate-chart"></canvas></div>
+    
+   
+
+    <script>
+        function createWinRateChart(data) {
+            const ctx = document.getElementById('r2-win-rate-chart');
+            const teams = Object.keys(data.r1).filter(team => data.r2[team]);
+            const r2WinRates = teams.map(team => (data.r2[team] / data.r1[team]) * 100);
+            const r3WinRates = teams.map(team => data.r3[team] ? (data.r3[team] / data.r2[team]) * 100 : 0);
+            const colors = teams.map(team => teamColors[team]);
+    
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: teams.map(team => teamNames[team]),
+                    datasets: [
+                        { label: '2nd Stage 勝率 (%)', data: r2WinRates, backgroundColor: colors }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: true, max: 60 } },
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+
+        function createStackedBarChart(canvasId, roundData) {
+            const ctx = document.getElementById(canvasId);
+            const totalWins = Object.values(roundData).reduce((a, b) => a + b, 0);
+            const teams = Object.keys(roundData);
+            const winPercentages = teams.map(team => (roundData[team] / totalWins) * 100);
+            const colors = teams.map(team => teamColors[team]);
+    
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['勝利割合'],
+                    datasets: teams.map((team, index) => ({
+                        label: teamNames[team],
+                        data: [winPercentages[index]],
+                        backgroundColor: colors[index],
+                    }))
+                },
+                options: {
+                    responsive: true,
+                    indexAxis: 'y',
+                    scales: {
+                        x: { stacked: true, max: 100 },
+                        y: { stacked: true }
+                    },
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+
+        function populateTable(tableId, roundData) {
+            const table = document.getElementById(tableId);
+            Object.entries(roundData).forEach(([team, wins]) => {
+                const row = table.insertRow();
+                row.insertCell(0).textContent = teamNames[team];
+                row.insertCell(1).textContent = wins;
+            });
+        }
+
+        const teamColors = {
+            '1': '#FF0000', // d1 - 赤
+            '2': '#800080', // d2 - 紫
+            '3': '#0000FF', // d3 - 青
+            '4': '#FFA500', // d4 - オレンジ
+            '5': '#FFFF00', // d5 - 黄色
+            '6': '#808080', // d6 - グレー
+            '7': '#c62c77'  // d7 - ピンク
+        };
+
+        const teamNames = {
+            '1': 'Buster Bros!!!',
+            '2': 'Bad Ass Temple',
+            '3': 'MAD TRIGGER CREW',
+            '4': 'どついたれ本舗',
+            '5': 'Fling Posse',
+            '6': '麻天狼',
+            '7': '言の葉党'
+        };
+
+        async function loadResults() {
+            const response = await fetch('counts.json');
+            const data = await response.json();
+            const win_counts = data.win_counts;
+            
+            createChart(document.getElementById('chart1'), ['Buster Bros!!!', 'Bad Ass Temple'], [win_counts.r1[1], win_counts.r1[2]], ['1', '2']);
+            createChart(document.getElementById('chart2'), ['MAD TRIGGER CREW', 'どついたれ本舗'], [win_counts.r1[3], win_counts.r1[4]], ['3', '4']);
+            createChart(document.getElementById('chart3'), ['Fling Posse', '麻天狼'], [win_counts.r1[5], win_counts.r1[6]], ['5', '6']);
+            
+            populateTable('table-r1', win_counts.r1);
+            populateTable('table-r2', win_counts.r2);
+            populateTable('table-r3', win_counts.r3);
+            createStackedBarChart('stacked-bar-chart-r2', win_counts.r2);
+            createStackedBarChart('stacked-bar-chart-r3', win_counts.r3);
+            createWinRateChart(win_counts);
+            createTeamWinRateChart(win_counts);
+            createR2CombinationsChart(data.r2_combinations);
+        }
+
+        function createChart(ctx, labels, values, teamKeys) {
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: teamKeys.map(team => teamColors[team])
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+        
+        function createTeamWinRateChart(data) {
+            const ctx = document.getElementById('r3-win-rate-chart');
+            const teams = Object.keys(data.r1).filter(team => data.r2[team]);
+            const r2Rates = teams.map(team => (data.r2[team] / data.r1[team]) * 100);
+            const r3Rates = teams.map(team => data.r3[team] ? (data.r3[team] / data.r2[team]) * 100 : 0);
+            const colors = teams.map(team => teamColors[team]);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: teams.map(team => teamNames[team]),
+                    datasets: [
+                        { label: 'Finale Stage 勝率 (%)', data: r3Rates, backgroundColor: colors }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: true, max: 100, min:75 } },
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+        
+        function createR2CombinationsChart(combinations) {
+            const ctx = document.getElementById('r2-combination-chart');
+            const totalCombinations = Object.values(combinations).reduce((a, b) => a + b, 0);
+            const labels = Object.keys(combinations).map(combo => formatCombinationLabel(combo));
+            const values = Object.values(combinations).map(count => (count / totalCombinations) * 100);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '割合 (%)',
+                        data: values,
+                        backgroundColor: '#4CAF50'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    indexAxis: 'y',
+                    scales: {
+                        x: { stacked: true, max: 25 },
+                        y: { stacked: true }
+                    },
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+
+        function formatCombinationLabel(combo) {
+            const teams = combo.replace(/[()]/g, '').split(', ').map(num => teamNames[num]);
+            return teams.join(' + ');
+        }
+
+
+        window.onload = loadResults;
+    </script>
+</body>
+</html>
