@@ -12,6 +12,11 @@
         table { width: 60%; margin: 20px auto; border-collapse: collapse; }
         th, td { border: 1px solid #ccc; padding: 10px; }
         th { background-color: #f4f4f4; }
+        @media (max-width: 768px) {
+            .bar-chart-container {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -41,7 +46,7 @@
     
     <h3>2nd Stageの組み合わせ割合</h3>
     <p>2nd Stageの組み合わせの割合を示します。</p>
-    <div class="bar-chart-container"><canvas id="r2-combination-chart"></canvas></div>
+    <div class="bar-chart-container" style="height: 550px;"><canvas id="r2-combination-chart"></canvas></div>
 
 
     <h2>Final Stage</h2>
@@ -54,9 +59,11 @@
     <h3>チーム別勝率グラフ</h3>
     <p>Final Stageに勝ち上がった回数のうち、何回優勝できたかの割合です。<br>
     チュウオウディビジョンは各ディビジョンの敗北の和集合になるため、グラフになっていません。</p>
-    <div class="bar-chart-container"><canvas id="r3-win-rate-chart"></canvas></div>
+    <div class="bar-chart-container" style="height: 400px;"><canvas id="r3-win-rate-chart"></canvas></div>
     
-   
+   <div style="height:1000px;">
+        nazenaze
+   </div>
 
     <script>
         function createWinRateChart(data) {
@@ -101,6 +108,7 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     indexAxis: 'y',
                     scales: {
                         x: { stacked: true, max: 100 },
@@ -193,6 +201,7 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     scales: { y: { beginAtZero: true, max: 100, min:75 } },
                     plugins: { legend: { position: 'bottom' } }
                 }
@@ -204,6 +213,7 @@
             const totalCombinations = Object.values(combinations).reduce((a, b) => a + b, 0);
             const labels = Object.keys(combinations).map(combo => formatCombinationLabel(combo));
             const values = Object.values(combinations).map(count => (count / totalCombinations) * 100);
+            console.log(labels);
             
             new Chart(ctx, {
                 type: 'bar',
@@ -217,10 +227,11 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     indexAxis: 'y',
                     scales: {
                         x: { stacked: true, max: 25 },
-                        y: { stacked: true }
+                        y: { stacked: true}
                     },
                     plugins: { legend: { position: 'bottom' } }
                 }
@@ -229,7 +240,8 @@
 
         function formatCombinationLabel(combo) {
             const teams = combo.replace(/[()]/g, '').split(', ').map(num => teamNames[num]);
-            return teams.join(' + ');
+            return teams;
+            // return teams.join('+');
         }
 
 
