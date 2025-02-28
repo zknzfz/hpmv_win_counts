@@ -216,7 +216,6 @@
             const totalCombinations = Object.values(combinations).reduce((a, b) => a + b, 0);
             const labels = Object.keys(combinations).map(combo => formatCombinationLabel(combo));
             const values = Object.values(combinations).map(count => (count / totalCombinations) * 100);
-            console.log(labels);
             
             new Chart(ctx, {
                 type: 'bar',
@@ -244,7 +243,6 @@
         function formatCombinationLabel(combo) {
             const teams = combo.replace(/[()]/g, '').split(', ').map(num => teamNames[num]);
             return teams;
-            // return teams.join('+');
         }
 
         function createCumulativeWinsChart(cumulativeWins) {
@@ -274,11 +272,6 @@
                     }
                 }
             });
-        }
-
-        function formatCombinationLabel(combo) {
-            const teams = combo.replace(/[()]/g, '').split(', ').map(num => teamNames[num]);
-            return teams.join(' + ');
         }
 
         window.onload = loadResults;
